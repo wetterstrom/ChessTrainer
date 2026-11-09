@@ -1,0 +1,143 @@
+﻿@using ChessDotNet
+@using ChessTrainer.Services
+
+<div class="board-wrapper">
+    <div class="chess-board">
+        @for (int r = 0; r < 8; r++)
+        {
+            int rank = IsFlipped ? r + 1 : 8 - r;
+            for (int f = 0; f < 8; f++)
+            {
+                int fileIndex = IsFlipped ? 7 - f : f;
+                char fileChar = (char)('a' + fileIndex);
+                string square = $"{fileChar}{rank}";
+                bool isLight = (rank + fileIndex) % 2 != 0;
+                char? piece = GetPieceOnSquare(fileIndex, rank);
+
+                bool isSelected = SelectedSquare == square;
+                bool isLegalTarget = LegalTargetSquares.Contains(square);
+                bool isLastMove = LastMoveSquares.Contains(square);
+                bool isHintSource = HintLevel >= 1 && HintUci.Length >= 2 && HintUci[..2] == square;
+                bool isHintTarget = HintLevel >= 2 && HintUci.Length >= 4 && HintUci.Substring(2, 2) == square;
+
+                <div class="square @(isLight ? "light" : "dark")
+                    @(isSelected ? "selected" : "")
+                    @(isLastMove ? "last-move" : "")
+                    @(isHintSource ? "hint-source" : "")
+                    @(isHintTarget ? "hint-target" : "")"
+                     @onclick="() => OnSquareClicked(square)">
+
+                    @if (f == 0)
+                    {
+                        <span class="coord-rank">@rank</span>
+                    }
+                    @if (r == 7)
+                    {
+                        <span class="coord-file">@fileChar</span>
+                    }
+
+                    @if (piece.HasValue)
+                    {
+                        <img src="@GetPieceSvgUrl(piece.Value)" class="piece-img" alt="@piece" draggable="false" />
+                    }
+
+                    @if (isLegalTarget)
+                    {
+                        <div class="legal-dot @(piece.HasValue ? "capture-ring" : "")"></div>
+                    }
+                </div>
+            }
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public string Fen { get; set; } = GameHistoryManager.DefaultStartFen;
+    [Parameter] public bool IsFlipped { get; set; }
+    [Parameter] public string? LastMoveUci { get; set; }
+    [Parameter] public string HintUci { get; set; } = string.Empty;
+    [Parameter] public int HintLevel { get; set; }
+    [Parameter] public EventCallback<string> OnMovePlayed { get; set; }
+
+    private string? SelectedSquare;
+    private HashSet<string> LegalTargetSquares = [];
+    private HashSet<string> LastMoveSquares =>
+        !string.IsNullOrEmpty(LastMoveUci) && LastMoveUci.Length >= 4
+            ? [LastMoveUci[..2], LastMoveUci.Substring(2, 2)]
+            : [];
+
+    private async Task OnSquareClicked(string square)
+    {
+        var game = new ChessGame(Fen);
+
+        // Om användaren klickar på en giltig målruta -> utför draget
+        if (SelectedSquare is not null && LegalTargetSquares.Contains(square))
+        {
+            char? pieceOnSource = GetPieceFromFenBySquare(SelectedSquare);
+            bool isPromotion = (pieceOnSource == 'P' && square.EndsWith('8')) ||
+                               (pieceOnSource == 'p' && square.EndsWith('1'));
+
+            string uciMove = $"{SelectedSquare}{square}{(isPromotion ? "q" : "")}";
+            SelectedSquare = null;
+            LegalTargetSquares.Clear();
+
+            await OnMovePlayed.InvokeAsync(uciMove);
+            return;
+        }
+
+        // Välj ny ruta om det står en pjäs där som tillhör spelaren vid draget
+        SelectedSquare = square;
+        LegalTargetSquares.Clear();
+
+        var validMoves = game.GetValidMoves(game.WhoseTurn)
+            .Where(m => string.Equals(m.OriginalPosition.ToString(), square, StringComparison.OrdinalIgnoreCase))
+            .Select(m => m.NewPosition.ToString().ToLowerInvariant());
+
+        foreach (var target in validMoves)
+        {
+            LegalTargetSquares.Add(target);
+        }
+
+        if (LegalTargetSquares.Count == 0)
+        {
+            SelectedSquare = null;
+        }
+    }
+
+    private char? GetPieceFromFenBySquare(string square)
+    {
+        int fileIndex = square[0] - 'a';
+        int rank = square[1] - '0';
+        return GetPieceOnSquare(fileIndex, rank);
+    }
+
+    private char? GetPieceOnSquare(int fileIndex, int rank)
+    {
+        if (string.IsNullOrWhiteSpace(Fen)) return null;
+        string[] rows = Fen.Split(' ')[0].Split('/');
+        int rowIndex = 8 - rank;
+        if (rowIndex < 0 || rowIndex >= rows.Length) return null;
+
+        int currentCol = 0;
+        foreach (char c in rows[rowIndex])
+        {
+            if (char.IsDigit(c))
+            {
+                currentCol += c - '0';
+            }
+            else
+            {
+                if (currentCol == fileIndex) return c;
+                currentCol++;
+            }
+        }
+        return null;
+    }
+
+    private static string GetPieceSvgUrl(char fenChar)
+    {
+        string color = char.IsUpper(fenChar) ? "w" : "b";
+        char pieceUpper = char.ToUpperInvariant(fenChar);
+        return $"https://lichess1.org/assets/piece/cburnett/{color}{pieceUpper}.svg";
+    }
+}

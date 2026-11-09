@@ -1,0 +1,354 @@
+:root {
+    --bg-main: #161512;
+    --bg-panel: #262421;
+    --text-main: #bababa;
+    --text-bright: #ffffff;
+    --board-light: #f0d9b5;
+    --board-dark: #b58863;
+    --accent: #3692e7;
+    --hint-green: #629924;
+}
+
+body {
+    background-color: var(--bg-main);
+    color: var(--text-main);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    margin: 0;
+}
+
+.trainer-container {
+    max-width: 1120px;
+    margin: 0 auto;
+    padding: 1rem;
+}
+
+.trainer-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.2rem;
+    border-bottom: 1px solid #333;
+    padding-bottom: 0.75rem;
+}
+
+.brand {
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: var(--text-bright);
+}
+
+.mode-tabs {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.tab-btn {
+    background: var(--bg-panel);
+    color: var(--text-main);
+    border: 1px solid #3a3834;
+    padding: 0.5rem 1rem;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 600;
+}
+
+    .tab-btn.active {
+        background: var(--accent);
+        color: #fff;
+        border-color: var(--accent);
+    }
+
+.main-workspace {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 1.5rem;
+    align-items: start;
+}
+
+.board-section {
+    display: flex;
+    gap: 0.6rem;
+    align-items: stretch;
+}
+
+/* Eval-bar */
+.eval-bar-container {
+    width: 28px;
+    background: #262421;
+    border-radius: 4px;
+    overflow: hidden;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    border: 1px solid #3a3834;
+}
+
+.eval-bar-white {
+    width: 100%;
+    background: #e6e6e6;
+    transition: height 0.35s ease;
+}
+
+.eval-score-label {
+    position: absolute;
+    width: 100%;
+    text-align: center;
+    font-size: 0.7rem;
+    font-weight: 700;
+    bottom: 6px;
+}
+
+.score-dark {
+    color: #161512;
+}
+
+.score-light {
+    color: #ffffff;
+    top: 6px;
+    bottom: auto;
+}
+
+/* Schackbräde */
+.chess-board {
+    display: grid;
+    grid-template-columns: repeat(8, 1fr);
+    grid-template-rows: repeat(8, 1fr);
+    width: min(78vw, 560px);
+    height: min(78vw, 560px);
+    aspect-ratio: 1 / 1;
+    border-radius: 4px;
+    overflow: hidden;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+    user-select: none;
+}
+
+.square {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    aspect-ratio: 1 / 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-sizing: border-box;
+}
+
+    .square.light {
+        background-color: var(--board-light);
+        color: var(--board-dark);
+    }
+
+    .square.dark {
+        background-color: var(--board-dark);
+        color: var(--board-light);
+    }
+
+    .square.selected {
+        background-color: rgba(20, 85, 30, 0.55) !important;
+    }
+
+    .square.last-move {
+        background-color: rgba(155, 199, 0, 0.45) !important;
+    }
+
+    .square.hint-source {
+        box-shadow: inset 0 0 0 4px #e69f00;
+    }
+
+    .square.hint-target {
+        box-shadow: inset 0 0 0 4px #3692e7;
+        background-color: rgba(54, 146, 231, 0.35) !important;
+    }
+
+.piece-img {
+    width: 82%;
+    height: 82%;
+    object-fit: contain;
+    pointer-events: none;
+    z-index: 2;
+}
+
+.legal-dot {
+    width: 26%;
+    height: 26%;
+    background-color: rgba(20, 85, 30, 0.5);
+    border-radius: 50%;
+    z-index: 3;
+}
+
+    .legal-dot.capture-ring {
+        width: 82%;
+        height: 82%;
+        background-color: transparent;
+        border: 4px solid rgba(20, 85, 30, 0.55);
+    }
+
+.coord-rank {
+    position: absolute;
+    top: 2px;
+    left: 4px;
+    font-size: 0.68rem;
+    font-weight: 700;
+}
+
+.coord-file {
+    position: absolute;
+    bottom: 2px;
+    right: 4px;
+    font-size: 0.68rem;
+    font-weight: 700;
+}
+
+/* Sidopanel */
+.side-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.panel-card {
+    background: var(--bg-panel);
+    padding: 1rem;
+    border-radius: 8px;
+    border: 1px solid #34322e;
+}
+
+.status-row {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 0.4rem;
+}
+
+    .status-row .value {
+        color: var(--text-bright);
+    }
+
+.captured-row {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 0.5rem;
+    padding-top: 0.5rem;
+    border-top: 1px solid #34322e;
+    font-size: 1rem;
+}
+
+.btn-group {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.action-btn {
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    padding: 0.55rem 0.9rem;
+    border-radius: 5px;
+    cursor: pointer;
+    font-weight: 600;
+}
+
+    .action-btn.hint-btn {
+        background: var(--hint-green);
+        flex: 1;
+    }
+
+    .action-btn.secondary {
+        background: #3a3732;
+    }
+
+    .action-btn:disabled {
+        opacity: 0.45;
+        cursor: not-allowed;
+    }
+
+.full-width {
+    width: 100%;
+    margin-top: 0.75rem;
+}
+
+.hint-banner {
+    margin-top: 0.75rem;
+    padding: 0.6rem;
+    background: rgba(98, 153, 36, 0.18);
+    border-left: 3px solid var(--hint-green);
+    border-radius: 4px;
+    color: var(--text-bright);
+    font-size: 0.9rem;
+}
+
+.search-row, .setting-row {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+    margin-top: 0.5rem;
+}
+
+.input-text, .input-select {
+    flex: 1;
+    background: #161512;
+    color: #fff;
+    border: 1px solid #444;
+    padding: 0.5rem;
+    border-radius: 4px;
+}
+
+.games-list {
+    max-height: 200px;
+    overflow-y: auto;
+    margin: 0.75rem 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+}
+
+.game-item {
+    padding: 0.5rem;
+    background: #1c1b18;
+    border-radius: 4px;
+    cursor: pointer;
+    border: 1px solid transparent;
+}
+
+    .game-item.active, .game-item:hover {
+        border-color: var(--accent);
+    }
+
+.nav-controls {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 0.75rem;
+}
+
+@media (max-width: 850px) {
+    .main-workspace {
+        grid-template-columns: 1fr;
+    }
+}
+
+.color-selector {
+    display: flex;
+    gap: 0.4rem;
+    flex: 1;
+}
+
+.color-btn {
+    flex: 1;
+    background: #161512;
+    color: var(--text-main);
+    border: 1px solid #444;
+    padding: 0.45rem 0.5rem;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: all 0.15s ease;
+}
+
+    .color-btn.active {
+        background: var(--accent);
+        color: #fff;
+        border-color: var(--accent);
+    }

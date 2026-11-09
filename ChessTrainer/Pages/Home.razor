@@ -1,0 +1,397 @@
+﻿@page "/"
+@using ChessDotNet
+@using ChessTrainer.Components
+@using ChessTrainer.Core.Interfaces
+@using ChessTrainer.Core.Models
+@using ChessTrainer.Services
+@inject GameHistoryManager History
+@inject LichessApiClient LichessClient
+@inject IChessEvaluationService EvalService
+@inject IOpponentStrategy OpponentAi
+
+<PageTitle>ChessTrainer – Lichess & Maia</PageTitle>
+
+<div class="trainer-container">
+    <!-- Toppmeny för att välja läge -->
+    <header class="trainer-header">
+        <div class="brand">♟️ ChessTrainer</div>
+        <div class="mode-tabs">
+            <button class="tab-btn @(ActiveMode == AppMode.PlayMaia ? "active" : "")"
+                    @onclick="() => SwitchMode(AppMode.PlayMaia)">
+                🤖 Spela mot Maia
+            </button>
+            <button class="tab-btn @(ActiveMode == AppMode.MyGames ? "active" : "")"
+                    @onclick="() => SwitchMode(AppMode.MyGames)">
+                📚 Mina Lichess-partier
+            </button>
+        </div>
+    </header>
+
+    <div class="main-workspace">
+        <!-- Vänster/Mitten: Eval-bar + Bräde -->
+        <div class="board-section">
+            <div class="eval-bar-container" title="Vinstchans Vit: @(CurrentEval.WhiteWinPercentage.ToString("0"))%">
+                <div class="eval-bar-white" style="height: @(CurrentEval.WhiteWinPercentage.ToString("0.0", System.Globalization.CultureInfo.InvariantCulture))%"></div>
+                <span class="eval-score-label @(CurrentEval.WhiteWinPercentage >= 50 ? "score-dark" : "score-light")">
+                    @(IsEvaluating ? "..." : CurrentEval.FormattedScore)
+                </span>
+            </div>
+
+            <ChessBoard Fen="@History.Current.Fen"
+                        IsFlipped="@IsBoardFlipped"
+                        LastMoveUci="@History.Current.MovePlayedUci"
+                        HintUci="@CurrentEval.BestMoveUci"
+                        HintLevel="@HintStep"
+                        OnMovePlayed="HandleUserMoveAsync" />
+        </div>
+
+        <!-- Höger: Analys- och kontrollpanel -->
+        <div class="side-panel">
+            <!-- Statuskort: Vem leder + Materialbalans -->
+            <div class="panel-card status-card">
+                <div class="status-row">
+                    <span class="label">Ställning:</span>
+                    <strong class="value">@GetWinningSummary()</strong>
+                </div>
+                <div class="status-row">
+                    <span class="label">Material:</span>
+                    <strong class="value">@History.Current.Material.AdvantageText</strong>
+                </div>
+                <div class="captured-row">
+                    <small>Vit har slagit: @FormatCaptured(History.Current.Material.CapturedByWhite)</small>
+                    <small>Svart har slagit: @FormatCaptured(History.Current.Material.CapturedByBlack)</small>
+                </div>
+            </div>
+
+            <!-- Träningsverktyg: Tips, Ångra, Vänd bräde -->
+            <div class="panel-card tools-card">
+                <div class="btn-group">
+                    <button class="action-btn hint-btn" @onclick="RequestHint" disabled="@IsBusy">
+                        💡 @(HintStep == 0 ? "Tips (Välj pjäs)" : HintStep == 1 ? "Visa hela draget" : $"Bäst: {CurrentEval.BestMoveUci}")
+                    </button>
+
+                    @if (ActiveMode == AppMode.PlayMaia)
+                    {
+                        <button class="action-btn" @onclick="UndoMovePairAsync" disabled="@(History.CurrentIndex == 0 || IsBusy)">
+                            ↩️ Ångra drag
+                        </button>
+                    }
+                    <button class="action-btn secondary" @onclick="() => IsBoardFlipped = !IsBoardFlipped">
+                        🔄 Vänd
+                    </button>
+                </div>
+
+                @if (HintStep > 0 && !string.IsNullOrEmpty(CurrentEval.BestMoveUci))
+                {
+                    <div class="hint-banner">
+                        @if (HintStep == 1)
+                        {
+                            <span>Kika på pjäsen på ruta <strong>@CurrentEval.HintSourceSquare.ToUpper()</strong>! Klicka på knappen igen för att se målrutan.</span>
+                        }
+                        else
+                        {
+                            <span>Rekommenderat drag: <strong>@CurrentEval.BestMoveUci</strong> (Utvärdering: @CurrentEval.FormattedScore)</span>
+                        }
+                    </div>
+                }
+            </div>
+
+            <!-- Läge 1: Spela mot Maia -->
+            @if (ActiveMode == AppMode.PlayMaia)
+            {
+                <div class="panel-card">
+                    <h4>Mänsklig Sparring (Maia-stil)</h4>
+                    <div class="setting-row">
+                        <label>Motståndarens rating:</label>
+                        <select @bind="TargetMaiaRating" class="input-select">
+                            <option value="1100">Maia ~1100 (Nybörjare/Medel)</option>
+                            <option value="1500">Maia ~1500 (Klubbspelare)</option>
+                            <option value="1900">Maia ~1900 (Avancerad)</option>
+                        </select>
+                    </div>
+
+                    <div class="setting-row">
+                        <label>Spela som:</label>
+                        <div class="color-selector">
+                            <button type="button" class="color-btn @(SelectedColorChoice == ColorChoice.White ? "active" : "")"
+                                    @onclick="() => SelectedColorChoice = ColorChoice.White" title="Spela som Vit">
+                                ♔ Vit
+                            </button>
+                            <button type="button" class="color-btn @(SelectedColorChoice == ColorChoice.Random ? "active" : "")"
+                                    @onclick="() => SelectedColorChoice = ColorChoice.Random" title="Slumpa färg">
+                                🎲 Slump
+                            </button>
+                            <button type="button" class="color-btn @(SelectedColorChoice == ColorChoice.Black ? "active" : "")"
+                                    @onclick="() => SelectedColorChoice = ColorChoice.Black" title="Spela som Svart">
+                                ♚ Svart
+                            </button>
+                        </div>
+                    </div>
+
+                    <button class="action-btn full-width" @onclick="StartNewMaiaGameAsync" disabled="@IsBusy">
+                        ▶️ Starta nytt parti
+                    </button>
+                </div>
+            }
+
+            @if (ActiveMode == AppMode.PlayMaia)
+            {
+                <button class="action-btn" @onclick="UndoMovePairAsync"
+                        disabled="@(History.CurrentIndex < (PlayerIsWhite ? 1 : 2) || IsBusy)">
+                    ↩️ Ångra drag
+                </button>
+            }
+
+            <!-- Läge 2: Mina Lichess-partier -->
+            @if (ActiveMode == AppMode.MyGames)
+            {
+                <div class="panel-card">
+                    <h4>Hämta dina Lichess-partier</h4>
+                    <div class="search-row">
+                        <input class="input-text" placeholder="Lichess-användarnamn..." @bind="LichessUsername" />
+                        <button class="action-btn" @onclick="FetchUserGamesAsync" disabled="@IsLoadingGames">
+                            @(IsLoadingGames ? "Laddar..." : "Hämta")
+                        </button>
+                    </div>
+
+                    @if (UserGames.Count > 0)
+                    {
+                        <div class="games-list">
+                            @foreach (var g in UserGames)
+                            {
+                                <div class="game-item @(SelectedGameId == g.Id ? "active" : "")"
+                                     @onclick="() => LoadSelectedGameAsync(g)">
+                                    <div><strong>@g.WhiteName</strong> vs <strong>@g.BlackName</strong></div>
+                                    <small>@(g.Opening?.Name ?? "Okänd öppning") • @g.PlayedDate.ToString("yyyy-MM-dd")</small>
+                                </div>
+                            }
+                        </div>
+                    }
+
+                    <div class="nav-controls">
+                        <button class="action-btn secondary" @onclick="() => NavigateHistory(0)" disabled="@(!History.CanStepBackward)">⏮</button>
+                        <button class="action-btn secondary" @onclick="StepBackwardAsync" disabled="@(!History.CanStepBackward)">◀ Bakåt</button>
+                        <span class="move-counter">Drag @(History.CurrentIndex) / @(History.Timeline.Count - 1)</span>
+                        <button class="action-btn secondary" @onclick="StepForwardAsync" disabled="@(!History.CanStepForward)">Framåt ▶</button>
+                        <button class="action-btn secondary" @onclick="() => NavigateHistory(History.Timeline.Count - 1)" disabled="@(!History.CanStepForward)">⏭</button>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    private enum AppMode { PlayMaia, MyGames }
+    private AppMode ActiveMode = AppMode.PlayMaia;
+
+    private enum ColorChoice { White, Random, Black }
+    private ColorChoice SelectedColorChoice = ColorChoice.White;
+    private bool PlayerIsWhite = true;
+
+    private int TargetMaiaRating = 1500;
+    private bool IsBoardFlipped = false;
+    private bool IsBusy = false;
+    private bool IsEvaluating = false;
+    private int HintStep = 0;
+
+    private string LichessUsername = "";
+    private bool IsLoadingGames = false;
+    private string? SelectedGameId;
+    private List<LichessGameDto> UserGames = [];
+
+    private EvaluationResult CurrentEval => History.Current.Evaluation ?? new EvaluationResult();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await RefreshEvaluationAsync();
+    }
+
+    private async Task SwitchMode(AppMode mode)
+    {
+        ActiveMode = mode;
+        HintStep = 0;
+        if (mode == AppMode.PlayMaia)
+        {
+            await StartNewMaiaGameAsync();
+        }
+    }
+
+    private async Task StartNewMaiaGameAsync()
+    {
+        if (IsBusy) return;
+        IsBusy = true;
+        HintStep = 0;
+
+        try
+        {
+            History.Reset();
+
+            PlayerIsWhite = SelectedColorChoice switch
+            {
+                ColorChoice.White => true,
+                ColorChoice.Black => false,
+                _ => Random.Shared.Next(2) == 0
+            };
+
+            // Vänd brädet automatiskt så att din valda färg är nederst
+            IsBoardFlipped = !PlayerIsWhite;
+            StateHasChanged();
+
+            // Om spelaren valde Svart gör Maia första draget som Vit direkt
+            if (!PlayerIsWhite)
+            {
+                var game = new ChessGame(History.Current.Fen);
+                string botMoveUci = await OpponentAi.GetNextMoveUciAsync(History.Current.Fen, TargetMaiaRating);
+                if (ChessMoveParser.TryApplyUciMove(game, botMoveUci, out string afterBotFen, out string appliedBotUci))
+                {
+                    History.RecordMove(afterBotFen, appliedBotUci, appliedBotUci);
+                }
+            }
+
+            await RefreshEvaluationAsync();
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+
+    private async Task HandleUserMoveAsync(string uciMove)
+    {
+        if (IsBusy) return;
+        IsBusy = true;
+        HintStep = 0;
+
+        try
+        {
+            var game = new ChessGame(History.Current.Fen);
+            if (!ChessMoveParser.TryApplyUciMove(game, uciMove, out string newFen, out string appliedUci))
+                return;
+
+            History.RecordMove(newFen, appliedUci, appliedUci);
+            StateHasChanged();
+
+            // Om vi spelar mot Maia och partiet inte är slut -> låt Maia svara
+            if (ActiveMode == AppMode.PlayMaia && !game.IsWinner(Player.White) && !game.IsWinner(Player.Black) && !game.IsDraw())
+            {
+                string botMoveUci = await OpponentAi.GetNextMoveUciAsync(newFen, TargetMaiaRating);
+                if (ChessMoveParser.TryApplyUciMove(game, botMoveUci, out string afterBotFen, out string appliedBotUci))
+                {
+                    History.RecordMove(afterBotFen, appliedBotUci, appliedBotUci);
+                }
+            }
+
+            await RefreshEvaluationAsync();
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+
+    private async Task UndoMovePairAsync()
+    {
+        HintStep = 0;
+        History.TakebackMovePair();
+        await RefreshEvaluationAsync();
+    }
+
+    private void RequestHint()
+    {
+        HintStep = HintStep < 2 ? HintStep + 1 : 1;
+    }
+
+    private async Task FetchUserGamesAsync()
+    {
+        if (string.IsNullOrWhiteSpace(LichessUsername)) return;
+        IsLoadingGames = true;
+        try
+        {
+            UserGames = await LichessClient.GetUserGamesAsync(LichessUsername, 15);
+        }
+        finally
+        {
+            IsLoadingGames = false;
+        }
+    }
+
+    private async Task LoadSelectedGameAsync(LichessGameDto gameDto)
+    {
+        SelectedGameId = gameDto.Id;
+        HintStep = 0;
+
+        // Vänd brädet automatiskt om användaren spelade Svart
+        IsBoardFlipped = string.Equals(gameDto.BlackName, LichessUsername.Trim(), StringComparison.OrdinalIgnoreCase);
+
+        ChessMoveParser.LoadSanMovesIntoHistory(gameDto.Moves, History);
+        await RefreshEvaluationAsync();
+    }
+
+    private async Task StepBackwardAsync()
+    {
+        HintStep = 0;
+        History.StepBackward();
+        await RefreshEvaluationAsync();
+    }
+
+    private async Task StepForwardAsync()
+    {
+        HintStep = 0;
+        History.StepForward();
+        await RefreshEvaluationAsync();
+    }
+
+    private async Task NavigateHistory(int index)
+    {
+        HintStep = 0;
+        History.JumpToMove(index);
+        await RefreshEvaluationAsync();
+    }
+
+    private async Task RefreshEvaluationAsync()
+    {
+        if (History.Current.Evaluation is not null) return;
+
+        IsEvaluating = true;
+        StateHasChanged();
+
+        try
+        {
+            var eval = await EvalService.EvaluatePositionAsync(History.Current.Fen);
+            History.AttachEvaluationToCurrent(eval);
+        }
+        finally
+        {
+            IsEvaluating = false;
+            StateHasChanged();
+        }
+    }
+
+    private string GetWinningSummary()
+    {
+        double winPct = CurrentEval.WhiteWinPercentage;
+        return winPct switch
+        {
+            >= 70 => $"Vit har vinnande ställning ({CurrentEval.FormattedScore})",
+            >= 56 => $"Vit står något bättre ({CurrentEval.FormattedScore})",
+            <= 30 => $"Svart har vinnande ställning ({CurrentEval.FormattedScore})",
+            <= 44 => $"Svart står något bättre ({CurrentEval.FormattedScore})",
+            _ => $"Jämn ställning ({CurrentEval.FormattedScore})"
+        };
+    }
+
+    private static string FormatCaptured(IReadOnlyList<char> pieces)
+    {
+        if (pieces.Count == 0) return "–";
+        return string.Join(" ", pieces.Select(p => char.ToLowerInvariant(p) switch
+        {
+            'q' => "♕",
+            'r' => "♖",
+            'b' => "♗",
+            'n' => "♘",
+            'p' => "♙",
+            _ => ""
+        }));
+    }
+}
