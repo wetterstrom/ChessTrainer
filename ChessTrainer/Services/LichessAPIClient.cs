@@ -1,7 +1,7 @@
-﻿using System.Net.Http.Headers;
+﻿using ChessTrainer.Core.Models;
+using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
-using ChessTrainer.Core.Models;
 
 namespace ChessTrainer.Services;
 
@@ -102,6 +102,27 @@ public class LichessApiClient(HttpClient httpClient)
             }
 
             return dto.Moves[0].Uci;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    // 4. Hämta full öppningsstatistik för Öppningskompassen
+    public async Task<LichessExplorerResponseDto?> GetOpeningExplorerStatsAsync(string fen, int targetRating = 1500)
+    {
+        try
+        {
+            string ratingBucket = targetRating switch
+            {
+                <= 1200 => "1000,1200",
+                <= 1500 => "1400,1600",
+                _ => "1800,2000"
+            };
+
+            string url = $"https://explorer.lichess.ovh/lichess?variant=standard&speeds=rapid,classical&ratings={ratingBucket}&topGames=0&recentGames=0&fen={Uri.EscapeDataString(fen)}";
+            return await httpClient.GetFromJsonAsync<LichessExplorerResponseDto>(url);
         }
         catch
         {

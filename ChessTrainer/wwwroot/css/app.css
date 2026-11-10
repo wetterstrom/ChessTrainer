@@ -356,3 +356,262 @@ body {
         color: #fff;
         border-color: var(--accent);
     }
+
+/* Öppningskompass */
+.compass-header {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+    margin-bottom: 0.75rem;
+}
+
+    .compass-header h4 {
+        margin: 0;
+    }
+
+.opening-badge {
+    font-size: 0.82rem;
+    color: var(--accent);
+    font-weight: 600;
+}
+
+.compass-moves {
+    display: flex;
+    flex-direction: column;
+    gap: 0.45rem;
+}
+
+.compass-row {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.4rem 0.5rem;
+    background: #1c1b18;
+    border-radius: 4px;
+    cursor: pointer;
+    border: 1px solid transparent;
+}
+
+    .compass-row:hover {
+        border-color: var(--accent);
+    }
+
+.compass-move-info {
+    width: 110px;
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+}
+
+    .compass-move-info strong {
+        color: var(--text-bright);
+    }
+
+    .compass-move-info small {
+        font-size: 0.72rem;
+        color: #888;
+    }
+
+.wdl-bar {
+    flex: 1;
+    height: 18px;
+    display: flex;
+    border-radius: 3px;
+    overflow: hidden;
+    font-size: 0.68rem;
+    font-weight: 700;
+}
+
+.wdl-white {
+    background: #e6e6e6;
+    color: #161512;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.wdl-draw {
+    background: #767470;
+    color: #ffffff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.wdl-black {
+    background: #363431;
+    color: #ffffff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.out-of-book {
+    color: #888;
+    font-style: italic;
+}
+
+/* Chess.com Badge på brädet */
+.move-quality-badge {
+    position: absolute;
+    top: -4px;
+    right: -4px;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    color: #fff;
+    font-size: 0.72rem;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 5;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.45);
+    border: 2px solid #fff;
+}
+
+/* Game Review Panel */
+.review-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.75rem;
+}
+
+    .review-header h4 {
+        margin: 0;
+    }
+
+.current-move-banner {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0.65rem;
+    background: #1c1b18;
+    border-left: 4px solid var(--accent);
+    border-radius: 4px;
+    margin-bottom: 0.75rem;
+    color: #fff;
+}
+
+.quality-pill {
+    padding: 0.15rem 0.45rem;
+    border-radius: 12px;
+    font-weight: 800;
+    font-size: 0.75rem;
+    color: #fff;
+}
+
+.accuracy-box {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.6rem;
+    margin-bottom: 0.85rem;
+}
+
+.acc-col {
+    background: #1c1b18;
+    padding: 0.6rem;
+    border-radius: 6px;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.acc-label {
+    font-size: 0.78rem;
+    color: #999;
+}
+
+.acc-score {
+    font-size: 1.35rem;
+    font-weight: 800;
+    padding: 0.2rem;
+    border-radius: 4px;
+}
+
+.white-acc {
+    background: #e6e6e6;
+    color: #161512;
+}
+
+.black-acc {
+    background: #363431;
+    color: #ffffff;
+}
+
+.quality-breakdown {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    margin-bottom: 0.85rem;
+}
+
+.breakdown-row {
+    display: grid;
+    grid-template-columns: 36px 1fr 36px;
+    align-items: center;
+    font-size: 0.85rem;
+    padding: 0.2rem 0.4rem;
+    background: #1c1b18;
+    border-radius: 4px;
+}
+
+.count-col {
+    font-weight: 700;
+    text-align: center;
+    color: #fff;
+}
+
+.label-col {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    justify-content: center;
+}
+
+.quality-dot {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-size: 0.7rem;
+    font-weight: 800;
+}
+
+.move-strip {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.3rem;
+    max-height: 120px;
+    overflow-y: auto;
+    padding-top: 0.5rem;
+    border-top: 1px solid #34322e;
+}
+
+.move-chip {
+    background: #161512;
+    color: var(--text-main);
+    border: 1px solid #3a3834;
+    border-radius: 4px;
+    padding: 0.2rem 0.45rem;
+    font-size: 0.8rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+    .move-chip.active {
+        border-color: var(--accent);
+        background: rgba(54, 146, 231, 0.2);
+        color: #fff;
+    }
+
+.chip-badge {
+    font-weight: 800;
+}

@@ -82,6 +82,19 @@ public class GameHistoryManager
         }
     }
 
+    public void UpdateSnapshotAt(int index, EvaluationResult eval, MoveQuality quality, double winDelta)
+    {
+        if (index >= 0 && index < _timeline.Count)
+        {
+            _timeline[index] = _timeline[index] with
+            {
+                Evaluation = eval,
+                Quality = quality,
+                WinChanceDelta = winDelta
+            };
+        }
+    }
+
     private static BoardSnapshot CreateSnapshot(string fen, string? uci, string? san) =>
         new(fen, uci, san, MaterialCalculator.CalculateFromFen(fen));
 }

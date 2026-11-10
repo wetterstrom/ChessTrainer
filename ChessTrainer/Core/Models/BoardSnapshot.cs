@@ -5,5 +5,7 @@ public record BoardSnapshot(
     string? MovePlayedUci,
     string? MovePlayedSan,
     MaterialBalance Material,
-    EvaluationResult? Evaluation = null
+    EvaluationResult? Evaluation = null,
+    MoveQuality Quality = MoveQuality.None,
+    double WinChanceDelta = 0
 );

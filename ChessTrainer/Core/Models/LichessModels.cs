@@ -42,7 +42,9 @@ public record LichessPvDto(
 );
 
 // Modeller för Lichess Opening Explorer (Mänskliga drag på vald rating)
+// 3. Modeller för Lichess Opening Explorer (Mänskliga drag + Öppningskompass)
 public record LichessExplorerResponseDto(
+    [property: JsonPropertyName("opening")] LichessOpeningDto? Opening,
     [property: JsonPropertyName("moves")] List<LichessExplorerMoveDto> Moves
 );
 
@@ -55,4 +57,7 @@ public record LichessExplorerMoveDto(
 )
 {
     public int TotalGames => WhiteWins + Draws + BlackWins;
+    public double WhitePct => TotalGames > 0 ? Math.Round(WhiteWins * 100.0 / TotalGames, 1) : 0;
+    public double DrawPct => TotalGames > 0 ? Math.Round(Draws * 100.0 / TotalGames, 1) : 0;
+    public double BlackPct => TotalGames > 0 ? Math.Round(100.0 - WhitePct - DrawPct, 1) : 0;
 }

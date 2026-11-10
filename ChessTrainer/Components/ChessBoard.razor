@@ -1,5 +1,6 @@
 ﻿@using ChessDotNet
 @using ChessTrainer.Services
+@using ChessTrainer.Core.Models
 
 <div class="board-wrapper">
     <div class="chess-board">
@@ -19,6 +20,7 @@
                 bool isLastMove = LastMoveSquares.Contains(square);
                 bool isHintSource = HintLevel >= 1 && HintUci.Length >= 2 && HintUci[..2] == square;
                 bool isHintTarget = HintLevel >= 2 && HintUci.Length >= 4 && HintUci.Substring(2, 2) == square;
+                bool isLastMoveTarget = !string.IsNullOrEmpty(LastMoveUci) && LastMoveUci.Length >= 4 && LastMoveUci.Substring(2, 2) == square;
 
                 <div class="square @(isLight ? "light" : "dark")
                     @(isSelected ? "selected" : "")
@@ -45,6 +47,13 @@
                     {
                         <div class="legal-dot @(piece.HasValue ? "capture-ring" : "")"></div>
                     }
+                    @if (isLastMoveTarget && LastMoveQuality != ChessTrainer.Core.Models.MoveQuality.None)
+                    {
+                        var meta = LastMoveQuality.GetMeta();
+                        <div class="move-quality-badge" style="background-color: @meta.ColorHex" title="@meta.Title">
+                            @meta.Badge
+                        </div>
+                    }
                 </div>
             }
         }
@@ -55,6 +64,7 @@
     [Parameter, EditorRequired] public string Fen { get; set; } = GameHistoryManager.DefaultStartFen;
     [Parameter] public bool IsFlipped { get; set; }
     [Parameter] public string? LastMoveUci { get; set; }
+    [Parameter] public MoveQuality LastMoveQuality { get; set; }
     [Parameter] public string HintUci { get; set; } = string.Empty;
     [Parameter] public int HintLevel { get; set; }
     [Parameter] public EventCallback<string> OnMovePlayed { get; set; }
