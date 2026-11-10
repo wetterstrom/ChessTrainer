@@ -130,4 +130,6 @@ public static class ChessMoveParser
 
         return null;
     }
+
+    // This method is used to convert a SAN move to UCI format, given the current game state.
 }
