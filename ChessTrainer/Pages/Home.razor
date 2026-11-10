@@ -11,16 +11,16 @@
 
 <PageTitle>ChessTrainer – Lichess & Maia</PageTitle>
 
-<div class="trainer-container">
+<div class="trainer-container" tabindex="0" @onkeydown="HandleKeyDown" style="outline: none;">
     <!-- Toppmeny för att välja läge -->
     <header class="trainer-header">
         <div class="brand">♟️ ChessTrainer</div>
         <div class="mode-tabs">
-            <button class="tab-btn @(ActiveMode == AppMode.PlayMaia ? "active" : "")"
+            <button type="button" class="tab-btn @(ActiveMode == AppMode.PlayMaia ? "active" : "")"
                     @onclick="() => SwitchMode(AppMode.PlayMaia)">
                 🤖 Spela mot Maia
             </button>
-            <button class="tab-btn @(ActiveMode == AppMode.MyGames ? "active" : "")"
+            <button type="button" class="tab-btn @(ActiveMode == AppMode.MyGames ? "active" : "")"
                     @onclick="() => SwitchMode(AppMode.MyGames)">
                 📚 Mina Lichess-partier
             </button>
@@ -30,7 +30,8 @@
     <div class="main-workspace">
         <!-- Vänster/Mitten: Eval-bar + Bräde -->
         <div class="board-section">
-            <div class="eval-bar-container" title="Vinstchans Vit: @(CurrentEval.WhiteWinPercentage.ToString("0"))%">
+            <div class="eval-bar-container @(IsBoardFlipped ? "flipped" : "")"
+                 title="Vinstchans Vit: @(CurrentEval.WhiteWinPercentage.ToString("0"))%">
                 <div class="eval-bar-white" style="height: @(CurrentEval.WhiteWinPercentage.ToString("0.0", System.Globalization.CultureInfo.InvariantCulture))%"></div>
                 <span class="eval-score-label @(CurrentEval.WhiteWinPercentage >= 50 ? "score-dark" : "score-light")">
                     @(IsEvaluating ? "..." : CurrentEval.FormattedScore)
@@ -76,8 +77,8 @@
                             ↩️ Ångra drag
                         </button>
                     }
-                    <button class="action-btn secondary" @onclick="() => IsBoardFlipped = !IsBoardFlipped">
-                        🔄 Vänd
+                    <button type="button" class="action-btn secondary" @onclick="FlipBoard" title="Vänd brädet (Kortkommando: F)">
+                        🔄 Vänd (@(IsBoardFlipped ? "Svart nederst" : "Vit nederst"))
                     </button>
                 </div>
 
@@ -393,5 +394,19 @@
             'p' => "♙",
             _ => ""
         }));
+    }
+
+    private void FlipBoard()
+    {
+        IsBoardFlipped = !IsBoardFlipped;
+    }
+
+    private void HandleKeyDown(KeyboardEventArgs e)
+    {
+        // Tryck på 'f' (som på Lichess) för att vända brädet när som helst
+        if (string.Equals(e.Key, "f", StringComparison.OrdinalIgnoreCase))
+        {
+            FlipBoard();
+        }
     }
 }
