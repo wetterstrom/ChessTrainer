@@ -2,7 +2,7 @@
 @using ChessTrainer.Services
 @using ChessTrainer.Core.Models
 
-<div class="board-wrapper">
+<div class="board-wrapper" style="position: relative;">
     <div class="chess-board">
         @for (int r = 0; r < 8; r++)
         {
@@ -12,7 +12,7 @@
                 int fileIndex = IsFlipped ? 7 - f : f;
                 char fileChar = (char)('a' + fileIndex);
                 string square = $"{fileChar}{rank}";
-                bool isLight = (rank + fileIndex) % 2 != 0;
+                bool isLight = (rank + fileIndex) % 2 == 0;
                 char? piece = GetPieceOnSquare(fileIndex, rank);
 
                 bool isSelected = SelectedSquare == square;
@@ -58,6 +58,29 @@
             }
         }
     </div>
+
+    <!-- SVG PILAR FÖR GAME REVIEW -->
+    <svg class="arrows-overlay" viewBox="0 0 800 800" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 10;">
+        <defs>
+            <marker id="arrow-green" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="4" markerHeight="4" orient="auto-start-reverse">
+                <path d="M 0 0 L 10 5 L 0 10 z" fill="rgba(150, 188, 75, 0.9)" />
+            </marker>
+            <marker id="arrow-red" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="4" markerHeight="4" orient="auto-start-reverse">
+                <path d="M 0 0 L 10 5 L 0 10 z" fill="rgba(202, 52, 49, 0.85)" />
+            </marker>
+        </defs>
+
+        @if (!string.IsNullOrEmpty(ArrowPlayedUci))
+        {
+            var c = GetSvgCoords(ArrowPlayedUci, IsFlipped);
+            <line x1="@c.X1" y1="@c.Y1" x2="@c.X2" y2="@c.Y2" stroke="rgba(202, 52, 49, 0.85)" stroke-width="12" marker-end="url(#arrow-red)" />
+        }
+        @if (!string.IsNullOrEmpty(ArrowBestUci))
+        {
+            var c = GetSvgCoords(ArrowBestUci, IsFlipped);
+            <line x1="@c.X1" y1="@c.Y1" x2="@c.X2" y2="@c.Y2" stroke="rgba(150, 188, 75, 0.9)" stroke-width="12" marker-end="url(#arrow-green)" />
+        }
+    </svg>
 </div>
 
 @code {
@@ -67,6 +90,8 @@
     [Parameter] public MoveQuality LastMoveQuality { get; set; }
     [Parameter] public string HintUci { get; set; } = string.Empty;
     [Parameter] public int HintLevel { get; set; }
+    [Parameter] public string? ArrowPlayedUci { get; set; }
+    [Parameter] public string? ArrowBestUci { get; set; }
     [Parameter] public EventCallback<string> OnMovePlayed { get; set; }
 
     private string? SelectedSquare;
@@ -149,5 +174,20 @@
         string color = char.IsUpper(fenChar) ? "w" : "b";
         char pieceUpper = char.ToUpperInvariant(fenChar);
         return $"https://lichess1.org/assets/piece/cburnett/{color}{pieceUpper}.svg";
+    }
+
+    private (int X1, int Y1, int X2, int Y2) GetSvgCoords(string uci, bool isFlipped)
+    {
+        if (uci.Length < 4) return (0, 0, 0, 0);
+        int col1 = uci[0] - 'a'; int row1 = uci[1] - '1';
+        int col2 = uci[2] - 'a'; int row2 = uci[3] - '1';
+
+        if (isFlipped)
+        {
+            col1 = 7 - col1; row1 = 7 - row1;
+            col2 = 7 - col2; row2 = 7 - row2;
+        }
+
+        return (col1 * 100 + 50, (7 - row1) * 100 + 50, col2 * 100 + 50, (7 - row2) * 100 + 50);
     }
 }
