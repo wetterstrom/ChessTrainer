@@ -17,5 +17,6 @@ builder.Services.AddScoped<StockfishInteropService>();
 builder.Services.AddScoped<IChessEvaluationService, ChessAnalysisFacade>();
 builder.Services.AddScoped<IOpponentStrategy, MaiaOpponentService>();
 builder.Services.AddScoped<GameReviewService>();
+builder.Services.AddScoped<ChessDotComApiClient>();
 
 await builder.Build().RunAsync();

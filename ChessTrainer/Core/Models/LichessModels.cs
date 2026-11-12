@@ -8,12 +8,15 @@ public record LichessGameDto(
     [property: JsonPropertyName("createdAt")] long CreatedAt,
     [property: JsonPropertyName("moves")] string Moves,
     [property: JsonPropertyName("winner")] string? Winner,
-    [property: JsonPropertyName("players")] LichessPlayersDto Players,
+    [property: JsonPropertyName("players")] LichessPlayersDto? Players,
     [property: JsonPropertyName("opening")] LichessOpeningDto? Opening
 )
 {
-    public string WhiteName => Players.White.User?.Name ?? "Anonym";
-    public string BlackName => Players.Black.User?.Name ?? "Anonym";
+    public string? CustomWhiteName { get; init; }
+    public string? CustomBlackName { get; init; }
+
+    public string WhiteName => CustomWhiteName ?? Players?.White?.User?.Name ?? "Anonym";
+    public string BlackName => CustomBlackName ?? Players?.Black?.User?.Name ?? "Anonym";
     public DateTime PlayedDate => DateTimeOffset.FromUnixTimeMilliseconds(CreatedAt).LocalDateTime;
 }
 

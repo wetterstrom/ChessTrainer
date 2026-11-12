@@ -10,6 +10,7 @@
 @inject IOpponentStrategy OpponentAi
 @inject GameReviewService ReviewService
 @inject IJSRuntime JS
+@inject ChessDotComApiClient ChessDotComClient
 
 <PageTitle>ChessTrainer – Lichess & Maia</PageTitle>
 
@@ -162,23 +163,41 @@
                 </div>
             }
 
-            <!-- Lichess Partier -->
+            <!-- Läge 2: Mina partier (Lichess / Chess.com) -->
             @if (ActiveMode == AppMode.MyGames)
             {
                 <div class="panel-card">
-                    <h4>Hämta dina Lichess-partier</h4>
-                    <div class="search-row">
-                        <input class="input-text" placeholder="Lichess-användarnamn..." @bind="LichessUsername" />
-                        <button type="button" class="action-btn" @onclick="FetchUserGamesAsync" disabled="@IsLoadingGames">Hämta</button>
+                    <h4>Hämta dina partier</h4>
+
+                    <div class="setting-row" style="margin-bottom: 0.5rem;">
+                        <div class="color-selector">
+                            <button type="button" class="color-btn @(SelectedPlatform == "lichess" ? "active" : "")"
+                                    @onclick='() => SelectedPlatform = "lichess"'>
+                                ♟️ Lichess
+                            </button>
+                            <button type="button" class="color-btn @(SelectedPlatform == "chesscom" ? "active" : "")"
+                                    @onclick='() => SelectedPlatform = "chesscom"'>
+                                ♞ Chess.com
+                            </button>
+                        </div>
                     </div>
+
+                    <div class="search-row">
+                        <input class="input-text" placeholder="@(SelectedPlatform == "lichess" ? "Lichess-användarnamn..." : "Chess.com-användarnamn...")" @bind="LichessUsername" />
+                        <button type="button" class="action-btn" @onclick="FetchUserGamesAsync" disabled="@IsLoadingGames">
+                            @(IsLoadingGames ? "Laddar..." : "Hämta")
+                        </button>
+                    </div>
+
                     @if (UserGames.Count > 0)
                     {
                         <div class="games-list">
                             @foreach (var g in UserGames)
                             {
-                                <div class="game-item @(SelectedGameId == g.Id ? "active" : "")" @onclick="() => LoadSelectedGameAsync(g)">
+                                <div class="game-item @(SelectedGameId == g.Id ? "active" : "")"
+                                     @onclick="() => LoadSelectedGameAsync(g)">
                                     <div><strong>@g.WhiteName</strong> vs <strong>@g.BlackName</strong></div>
-                                    <small>@(g.Opening?.Name ?? "Okänd öppning")</small>
+                                    <small>@(g.Opening?.Name ?? "Okänd öppning") • @g.PlayedDate.ToString("yyyy-MM-dd")</small>
                                 </div>
                             }
                         </div>
@@ -216,6 +235,7 @@
     private bool IsRetryMode = false;
     private int RetryMistakeIndex = -1;
     private string RetryFeedback = "";
+    private string SelectedPlatform = "lichess";
 
     private EvaluationResult CurrentEval => History.Current.Evaluation ?? new EvaluationResult();
 
@@ -388,9 +408,19 @@
         try
         {
             await SaveSettingsAsync();
-            UserGames = await LichessClient.GetUserGamesAsync(LichessUsername, 15);
+            if (SelectedPlatform == "chesscom")
+            {
+                UserGames = await ChessDotComClient.GetUserGamesAsync(LichessUsername, 15);
+            }
+            else
+            {
+                UserGames = await LichessClient.GetUserGamesAsync(LichessUsername, 15);
+            }
         }
-        finally { IsLoadingGames = false; }
+        finally
+        {
+            IsLoadingGames = false;
+        }
     }
 
     private async Task LoadSelectedGameAsync(LichessGameDto gameDto)
