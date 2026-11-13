@@ -84,11 +84,12 @@
                 </div>
             </div>
 
-            <!-- Game Review -->
+            <!-- Chess.com Game Review Panel -->
             <div class="panel-card review-card">
                 <div class="review-header">
                     <h4>📊 Game Review</h4>
-                    <button type="button" class="action-btn" @onclick="RunFullGameReviewAsync" disabled="@(History.Timeline.Count <= 1 || IsRunningReview)">
+                    <button type="button" class="action-btn" @onclick="RunFullGameReviewAsync"
+                            disabled="@(History.Timeline.Count <= 1 || IsRunningReview)">
                         @(IsRunningReview ? $"Analyserar ({ReviewProgress}/{History.Timeline.Count - 1})..." : "🔍 Analysera parti")
                     </button>
                 </div>
@@ -104,20 +105,57 @@
                     </div>
                 }
 
-                @if (History.Current.Quality != MoveQuality.None && !IsRetryMode)
-                {
-                    var meta = History.Current.Quality.GetMeta();
-                    <div class="current-move-banner" style="border-left-color: @meta.ColorHex">
-                        <span class="quality-pill" style="background: @meta.ColorHex">@meta.Badge</span>
-                        <strong>@(History.Current.MovePlayedSan ?? History.Current.MovePlayedUci)</strong> är ett <strong>@meta.Title.ToLower()</strong>
-                    </div>
-                }
-
                 @if (ReviewSummary is not null)
                 {
+                    <!-- UTVÄRDERINGSGRAF (CHESS.COM STIL) -->
+                    <div class="eval-graph-container" title="Partiets utvärderingsgraf">
+                        @foreach (var wp in ReviewSummary.WhiteWinPercentages)
+                        {
+                            <div class="eval-graph-bar @(wp < 40 ? "black-winning" : "")"
+                                 style="height: @(Math.Clamp(wp, 5, 95))%;"></div>
+                        }
+                    </div>
+
+                    <!-- PRECISION / ACCURACY BOX -->
                     <div class="accuracy-box">
-                        <div class="acc-col"><span class="acc-label">♔ White Accuracy</span><span class="acc-score white-acc">@ReviewSummary.White.Accuracy%</span></div>
-                        <div class="acc-col"><span class="acc-label">♚ Black Accuracy</span><span class="acc-score black-acc">@ReviewSummary.Black.Accuracy%</span></div>
+                        <div class="acc-col">
+                            <span class="acc-label">♔ Vit Precision</span>
+                            <span class="acc-score white-acc">@ReviewSummary.White.Accuracy%</span>
+                        </div>
+                        <div class="acc-col">
+                            <span class="acc-label">♚ Svart Precision</span>
+                            <span class="acc-score black-acc">@ReviewSummary.Black.Accuracy%</span>
+                        </div>
+                    </div>
+
+                    <!-- CHESS.COM STATISTIKTABELL -->
+                    <div class="review-stats-table">
+                        <div class="review-stats-header">
+                            <span>Färdigheter</span>
+                            <span>♔</span>
+                            <span>♚</span>
+                        </div>
+
+                        @foreach (var q in new[] {
+                            MoveQuality.Brilliant, MoveQuality.Great, MoveQuality.Best,
+                            MoveQuality.Excellent, MoveQuality.Good, MoveQuality.Book,
+                            MoveQuality.Inaccuracy, MoveQuality.Mistake, MoveQuality.Blunder })
+                        {
+                            var meta = q.GetMeta();
+                            int wCount = ReviewSummary.White.Counts[q];
+                            int bCount = ReviewSummary.Black.Counts[q];
+                            if (wCount > 0 || bCount > 0 || q is MoveQuality.Brilliant or MoveQuality.Mistake or MoveQuality.Blunder)
+                            {
+                                <div class="review-stats-row">
+                                    <div class="stat-label-group">
+                                        <span class="quality-dot" style="background: @meta.ColorHex">@meta.Badge</span>
+                                        <span>@meta.Title</span>
+                                    </div>
+                                    <span style="color: @meta.ColorHex">@wCount</span>
+                                    <span style="color: @meta.ColorHex">@bCount</span>
+                                </div>
+                            }
+                        }
                     </div>
 
                     <button class="action-btn full-width" style="margin-bottom: 0.75rem; background: #e6912c; color: #fff;" @onclick="StartMistakeRetry">
@@ -130,10 +168,17 @@
                             int idx = i;
                             var snap = History.Timeline[i];
                             var meta = snap.Quality.GetMeta();
-                            <button type="button" class="move-chip @(History.CurrentIndex == idx ? "active" : "")" @onclick="() => NavigateHistory(idx)">
-                                @if (idx % 2 == 1) { <small>@((idx + 1) / 2).</small> }
+                            <button type="button" class="move-chip @(History.CurrentIndex == idx ? "active" : "")"
+                                    @onclick="() => NavigateHistory(idx)">
+                                @if (idx % 2 == 1)
+                                {
+                                    <small>@((idx + 1) / 2).</small>
+                                }
                                 <span>@(snap.MovePlayedSan ?? snap.MovePlayedUci)</span>
-                                @if (snap.Quality != MoveQuality.None) { <span class="chip-badge" style="color: @meta.ColorHex">@meta.Badge</span> }
+                                @if (snap.Quality != MoveQuality.None)
+                                {
+                                    <span class="chip-badge" style="color: @meta.ColorHex">@meta.Badge</span>
+                                }
                             </button>
                         }
                     </div>

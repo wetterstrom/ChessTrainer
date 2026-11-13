@@ -10,7 +10,10 @@ public record PlayerReviewStats(
 
 public record GameReviewSummary(
     PlayerReviewStats White,
-    PlayerReviewStats Black
+    PlayerReviewStats Black,
+    List<double> WhiteWinPercentages,
+    string WhiteName,
+    string BlackName
 );
 
 public class GameReviewService(StockfishInteropService stockfish)
@@ -26,6 +29,12 @@ public class GameReviewService(StockfishInteropService stockfish)
             var startEval = await EvaluateSafeAsync(history.Timeline[0].Fen);
             history.UpdateSnapshotAt(0, startEval, MoveQuality.None, 0);
         }
+
+        var whiteCounts = Enum.GetValues<MoveQuality>().ToDictionary(k => k, _ => 0);
+        var blackCounts = Enum.GetValues<MoveQuality>().ToDictionary(k => k, _ => 0);
+
+        double whiteAccSum = 0; int whiteMoves = 0;
+        double blackAccSum = 0; int blackMoves = 0;
 
         for (int i = 1; i < total; i++)
         {
@@ -58,9 +67,37 @@ public class GameReviewService(StockfishInteropService stockfish)
             MoveQuality quality = ClassifyMove(i, playedEngineBest, sacrificedMaterial, winLoss, prevWin, currWin);
 
             history.UpdateSnapshotAt(i, eval, quality, currWin - prevWin);
+
+            // Samla statistik för tabellen och precision
+            double loss = Math.Max(0, -(currWin - prevWin));
+            double moveAcc = Math.Clamp(103.1668 * Math.Exp(-0.04354 * loss) - 3.1669, 0, 100);
+
+            if (whiteMoved)
+            {
+                whiteCounts[quality]++;
+                whiteAccSum += moveAcc;
+                whiteMoves++;
+            }
+            else
+            {
+                blackCounts[quality]++;
+                blackAccSum += moveAcc;
+                blackMoves++;
+            }
         }
 
-        return BuildSummary(history.Timeline);
+        var whiteWinPcts = history.Timeline.Select(s => s.Evaluation?.WhiteWinPercentage ?? 50.0).ToList();
+
+        var whiteStats = new PlayerReviewStats(whiteMoves > 0 ? Math.Round(whiteAccSum / whiteMoves, 1) : 100, whiteCounts);
+        var blackStats = new PlayerReviewStats(blackMoves > 0 ? Math.Round(blackAccSum / blackMoves, 1) : 100, blackCounts);
+
+        return new GameReviewSummary(
+            whiteStats,
+            blackStats,
+            whiteWinPcts,
+            "Vit",
+            "Svart"
+        );
     }
 
     private async Task<EvaluationResult> EvaluateSafeAsync(string fen)
@@ -121,39 +158,5 @@ public class GameReviewService(StockfishInteropService stockfish)
             return MoveQuality.Mistake;
 
         return MoveQuality.Blunder;
-    }
-
-    private static GameReviewSummary BuildSummary(IReadOnlyList<BoardSnapshot> timeline)
-    {
-        var whiteCounts = Enum.GetValues<MoveQuality>().ToDictionary(k => k, _ => 0);
-        var blackCounts = Enum.GetValues<MoveQuality>().ToDictionary(k => k, _ => 0);
-
-        double whiteAccSum = 0; int whiteMoves = 0;
-        double blackAccSum = 0; int blackMoves = 0;
-
-        for (int i = 1; i < timeline.Count; i++)
-        {
-            var q = timeline[i].Quality;
-            double loss = Math.Max(0, -timeline[i].WinChanceDelta);
-            double moveAcc = Math.Clamp(103.1668 * Math.Exp(-0.04354 * loss) - 3.1669, 0, 100);
-
-            if (i % 2 == 1)
-            {
-                whiteCounts[q]++;
-                whiteAccSum += moveAcc;
-                whiteMoves++;
-            }
-            else
-            {
-                blackCounts[q]++;
-                blackAccSum += moveAcc;
-                blackMoves++;
-            }
-        }
-
-        return new GameReviewSummary(
-            new PlayerReviewStats(whiteMoves > 0 ? Math.Round(whiteAccSum / whiteMoves, 1) : 100, whiteCounts),
-            new PlayerReviewStats(blackMoves > 0 ? Math.Round(blackAccSum / blackMoves, 1) : 100, blackCounts)
-        );
     }
 }
